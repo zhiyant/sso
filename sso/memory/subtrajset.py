@@ -24,6 +24,15 @@ class MemoryBasedonRewards(Memory):
         self.gamma = 0.9
 
         self.best_reward = 0
+
+        self.return_weight = 0.1
+        self.idx_weight = 0.3
+        self.similarity_weight = 0.9
+
+        self.mean_ret = 0
+        self.std_ret = 0
+        self.mean_similarity = 0
+        self.std_similarity = 0
     
     def save(self, save_path: str) -> None:
 
@@ -67,7 +76,7 @@ class MemoryBasedonRewards(Memory):
         # TODO: reduce overlap in sub trajectories
 
         # print the current state
-        print("#### Current Trajectory ####")
+        print("###################### Current Trajectory ######################")
         for state in trajectory:
             print(state.last_action, state.reward)
 
@@ -81,48 +90,53 @@ class MemoryBasedonRewards(Memory):
 
         discounted_rewards = discounted_rewards[:len(reward)]
 
-
+        sum_discounted_rewards = []
         # fixed length of sub_traj
         length = self.max_traj_len
 
         while True:
             
-            best_return = 0
+            best_return = -np.inf
             sidx = None
 
-            for idx in range(1, len(discounted_rewards) - length + 1, 1):
+         
+            for idx in range(len(discounted_rewards) - length + 1):
                 
-                cumm_return = best_return - discounted_rewards[idx - 1] + discounted_rewards[idx + length - 1]
+                # cumm_return = best_return - discounted_rewards[idx - 1] + discounted_rewards[idx + length - 1]
+                cumm_return = sum(discounted_rewards[idx : idx + length + 1])
                 if cumm_return > best_return:
                     best_return = cumm_return
                     sidx = idx
- 
             
-            
-            if sidx is None or sidx + length + 1 > len(discounted_rewards):
+            if sidx is None or sidx + length - 1 > len(discounted_rewards):
                 break
             else:
                 sub_traj = trajectory.slice(sidx, sidx + length) # best_sub_traj
+                sum_discounted_rewards.append(best_return)
                 self.trajectories.append(sub_traj)
-                for idx in range(sidx, sidx + length + 1):
-                    discounted_rewards[idx] = -np.inf
+                for idx in range(sidx, sidx + length):
+                    discounted_rewards[idx] = -(np.inf)
+
+                    
+
+        self.mean_ret = np.mean(sum_discounted_rewards)
+        self.std_ret = np.std(sum_discounted_rewards)
 
 
-        print("#### Selected Subtrajectories in insert() ####")
+        print("###################### Selected Subtrajectories in insert() ######################")
         for i, subtraj in enumerate(self.trajectories):
-            print(f"# subtrajectory {i} #")
+            print(f"###################### subtrajectory {i} ######################")
             for x in subtraj:
                 print(x.last_action, x.reward)
 
         return
 
-
-    def score_traj(self):
-        return
+    def norm_score(self, score, mean, std):
+        return max(0, (score - mean + 2 * std) / std)
 
     def get_memories(self, trajectory: Trajectory = None, n: int = None) -> List[Trajectory]:
 
-        print("#### Current Trajectory ####")
+        print("###################### Current Trajectory ######################")
         for state in trajectory:
             print(state.last_action, state.reward)
 
@@ -130,44 +144,40 @@ class MemoryBasedonRewards(Memory):
         if n is None or n > len(self.trajectories):
             n = len(self.trajectories)
         
-
-        alpha1 = 0.1
-        alpha2 = 1.5
-        alpha3 = 0.25
-
         combined_list = []
-
+        all_state_similarity = []
         for i in range(len(self.trajectories)):
 
-            ret = sum(self.get_discounted_rewards(self.trajectories[i])) * alpha1
-            # reward //= self.best_reward
+            ret = sum(self.get_discounted_rewards(self.trajectories[i])) 
             
-            idx = (i // len(self.trajectories)) *alpha2
+            idx = (i / len(self.trajectories)) 
 
-            state_similarities = get_state_similarity(self.trajectories[i][0], trajectory[-1]) * alpha3 if trajectory is not None else 0
+            state_similarities = get_state_similarity(self.trajectories[i][0], trajectory[-1]) if trajectory is not None else 0
             
+            all_state_similarity.append(state_similarities)
 
             combined_list.append([ret, idx, state_similarities, self.trajectories[i]])
 
+        self.mean_similarity = np.mean(all_state_similarity)
+        self.std_similarity = np.std(all_state_similarity)
 
-        all_mean = np.mean(combined_list,axis=0)
-        all_std = np.std(combined_list, axis=0)
-
-
-
+        
+        for i, item in enumerate(combined_list):
+            item[0] = self.norm_score(item[0], self.mean_ret, self.std_ret) * self.return_weight
+            item[1] = item[1] * self.idx_weight
+            item[2] = self.norm_score(item[2], self.mean_similarity, self.std_similarity) * self.similarity_weight
+            # print(f"state {i}, return score:{item[0]}, recency score:{item[1]}, similarity score:{item[2]}\n")
 
         sorted_combined_list = sorted(combined_list, 
-                                      key=lambda x:(x[0],x[1],x[2]),
+                                      key=lambda x:(x[2],x[0],x[1]),
                                       reverse=True) # desc
-        
-        sorted_trajectories = []
 
-        for i in range(n):
-            sorted_trajectories.append(sorted_combined_list[i][3])
+        sorted_trajectories = [item[3] for item in sorted_combined_list[:n]]
 
-        print("#### Result for get_memories() ####")
+        # todo save the log into txt files
+        print("###################### Result for get_memories() ######################")
         for i, sub_traj in enumerate(sorted_trajectories):
-            print(f"# subtrajectory {i} #")
+            print(f"###################### subtrajectory {i} ######################")
             for x in sub_traj:
                 print(x.last_action, x.reward)
 

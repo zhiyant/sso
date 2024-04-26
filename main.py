@@ -14,6 +14,8 @@ from sso.agent.fewshot import FewshotAgent
 from sso.agent.reflexion import ReflexionAgent
 from sso.memory.skillset import SkillSetMemory
 from sso.memory.examples import ExamplesMemory
+from sso.memory.subtrajset import MemoryBasedonRewards
+
 from sso.trajectory import Trajectory
 from sso.llm import set_default_model
 
@@ -214,6 +216,8 @@ if __name__ == '__main__':
         )
     elif args.memory == "examples":
         memory = ExamplesMemory()
+    elif args.memory == "return":
+        memory = MemoryBasedonRewards()
     else:
         raise ValueError(f"Unknown memory type: {args.memory}")
 
@@ -231,8 +235,14 @@ if __name__ == '__main__':
         agent = ReflexionAgent(**agent_args)
     else:
         raise ValueError("Invalid agent: {}".format(args.agent))
-    if args.load is not None:
-        agent.load(args.load)
+    
+
+    # if args.load is not None:
+    #     agent.load(args.load)
+
+    # pre-load all the trjectories into the memory
+    
+
 
     # Set env
     env_args = dict(
