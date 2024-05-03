@@ -169,7 +169,7 @@ class MemoryBasedonRewards(Memory):
             # print(f"state {i}, return score:{item[0]}, recency score:{item[1]}, similarity score:{item[2]}\n")
 
         sorted_combined_list = sorted(combined_list, 
-                                      key=lambda x:(x[2],x[0],x[1]),
+                                      key = x[2]+x[0]+x[1],
                                       reverse=True) # desc
 
         sorted_trajectories = [item[3] for item in sorted_combined_list[:n]]

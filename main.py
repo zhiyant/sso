@@ -168,7 +168,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
 
     # Experiment params
-    parser.add_argument("--output", type=str, default="results", help="output directory")
+    parser.add_argument("--output", type=str, default="results_chem_test", help="output directory")
     parser.add_argument("--train_iters", type=int, default=3, help="number of iterations to run")
     parser.add_argument("--test_iters", type=int, default=1, help="number of test iterations to run")
     parser.add_argument("--test_freq", type=int, default=0, help="test frequency, if 0 will test once at end")
