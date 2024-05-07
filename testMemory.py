@@ -56,11 +56,11 @@ if __name__ == '__main__':
     
     memory = MemoryBasedonRewards()
 
-    memory.load_and_reboot("test_transfer", is_single = False)
+    memory.load_and_reboot("../test_transfer", is_single = False)
 
     
     # test with 2-nd trajectory.json
-    load_path = "test_transfer/2"
+    load_path = "../test_transfer/2"
     with open(os.path.join(load_path, "trajectory.json"), "r") as f:
         data = json.load(f)
     trajectory = Trajectory.from_dict(data)

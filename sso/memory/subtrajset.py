@@ -28,11 +28,15 @@ class MemoryBasedonRewards(Memory):
         self.return_weight = 0.1
         self.idx_weight = 0.3
         self.similarity_weight = 0.9
+        self.state_count_weight = -0.2
 
         self.mean_ret = 0
         self.std_ret = 0
         self.mean_similarity = 0
         self.std_similarity = 0
+
+        self.state_visits = dict()
+        
     
     def save(self, save_path: str) -> None:
 
@@ -73,13 +77,15 @@ class MemoryBasedonRewards(Memory):
         return discounted_reward
 
     def insert(self, trajectory: Trajectory) -> None:
-        # TODO: reduce overlap in sub trajectories
-
         # print the current state
         print("###################### Current Trajectory ######################")
         for state in trajectory:
             print(state.last_action, state.reward)
-
+            if state in self.state_visits:
+                self.state_visits[state] += 1
+            else:
+                self.state_visits[state] = 1
+        
         # remove trailing zeros
         reward = [x.reward for x in trajectory]
         while reward and reward[-1] == 0:
@@ -154,9 +160,11 @@ class MemoryBasedonRewards(Memory):
 
             state_similarities = get_state_similarity(self.trajectories[i][0], trajectory[-1]) if trajectory is not None else 0
             
+            state_count = sum(self.state_visits[state] for state in self.trajectories[i])
+
             all_state_similarity.append(state_similarities)
 
-            combined_list.append([ret, idx, state_similarities, self.trajectories[i]])
+            combined_list.append([ret, idx, state_similarities, state_count, self.trajectories[i]])
 
         self.mean_similarity = np.mean(all_state_similarity)
         self.std_similarity = np.std(all_state_similarity)
@@ -166,13 +174,15 @@ class MemoryBasedonRewards(Memory):
             item[0] = self.norm_score(item[0], self.mean_ret, self.std_ret) * self.return_weight
             item[1] = item[1] * self.idx_weight
             item[2] = self.norm_score(item[2], self.mean_similarity, self.std_similarity) * self.similarity_weight
+            item[3] = item[3] * self.state_count_weight
+            
             # print(f"state {i}, return score:{item[0]}, recency score:{item[1]}, similarity score:{item[2]}\n")
 
         sorted_combined_list = sorted(combined_list, 
-                                      key = x[2]+x[0]+x[1],
+                                      key = lambda x:x[2]+x[0]+x[1]+x[3],
                                       reverse=True) # desc
 
-        sorted_trajectories = [item[3] for item in sorted_combined_list[:n]]
+        sorted_trajectories = [item[4] for item in sorted_combined_list[:n]]
 
         # todo save the log into txt files
         print("###################### Result for get_memories() ######################")

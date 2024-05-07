@@ -241,8 +241,8 @@ if __name__ == '__main__':
     #     agent.load(args.load)
 
     # pre-load all the trjectories into the memory
-    
-
+    if args.load is not None:
+        memory.load_and_reboot(args.load, is_single=False)
 
     # Set env
     env_args = dict(

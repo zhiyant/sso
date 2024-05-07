@@ -29,7 +29,7 @@ class FewshotAgent(Agent):
             system_message += "\n\n" + sub_trajectory[-1].action_prompt
 
         if len(self.memory.trajectories) > 0:
-            examples = self.memory.get_memories(n=self.fewshot)
+            examples = self.memory.get_memories(sub_trajectory, n=self.fewshot)
             system_message += "\n\nUse the following example trajector{} to help you accomplish the task:".format(
                 "ies" if len(examples) > 1 else "y"
             )
